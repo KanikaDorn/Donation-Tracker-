@@ -1,25 +1,27 @@
 import { useState } from 'react';
-import { Layout } from '../components/Layout';
-import { HeroSection } from '../components/HeroSection';
-import { CampaignCard } from '../components/CampaignCard';
-import { CampaignDetails } from '../components/CampaignDetails';
-import { CreateCampaignForm } from '../components/CreateCampaignForm';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { Badge } from '../components/ui/badge';
-import { Toaster } from '../components/ui/sonner';
-import { toast } from 'sonner@2.0.3';
+import { Layout } from './components/Layout';
+import { HeroSection } from './components/HeroSection';
+import { CampaignCard } from './components/CampaignCard';
+import { CampaignDetails } from './components/CampaignDetails';
+import { CreateCampaignForm } from './components/CreateCampaignForm';
+import { Button } from './components/ui/button';
+import { Input } from './components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './components/ui/select';
+import { Badge } from './components/ui/badge';
+import { toast } from 'sonner';
 import { Search, Filter, TrendingUp, Award, Clock } from 'lucide-react';
-import { mockCampaigns, categories } from '../data/mockData';
+import { Campaign, DonationForm, CreateCampaignForm as CreateCampaignFormType } from './types';
+import { mockCampaigns, categories } from './data/mockData';
+
+type View = 'home' | 'campaign-details' | 'create-campaign';
 
 export default function App() {
-  const [currentView, setCurrentView] = useState('home');
-  const [selectedCampaign, setSelectedCampaign] = useState(null);
-  const [campaigns, setCampaigns] = useState(mockCampaigns);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('All Categories');
-  const [sortBy, setSortBy] = useState('featured');
+  const [currentView, setCurrentView] = useState<View>('home');
+  const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
+  const [campaigns, setCampaigns] = useState<Campaign[]>(mockCampaigns);
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('All Categories');
+  const [sortBy, setSortBy] = useState<string>('featured');
 
   const featuredCampaigns = campaigns.filter(c => c.featured);
   
@@ -44,12 +46,12 @@ export default function App() {
     }
   });
 
-  const handleViewCampaignDetails = (campaign) => {
+  const handleViewCampaignDetails = (campaign: Campaign) => {
     setSelectedCampaign(campaign);
     setCurrentView('campaign-details');
   };
 
-  const handleDonate = (campaignId, donation) => {
+  const handleDonate = (campaignId: string, donation?: DonationForm) => {
     if (donation) {
       // Process donation
       const newDonor = {
@@ -92,8 +94,8 @@ export default function App() {
     }
   };
 
-  const handleCreateCampaign = (campaignData) => {
-    const newCampaign = {
+  const handleCreateCampaign = (campaignData: CreateCampaignFormType) => {
+    const newCampaign: Campaign = {
       id: `campaign-${Date.now()}`,
       title: campaignData.title,
       description: campaignData.description,
@@ -298,7 +300,6 @@ export default function App() {
   return (
     <Layout>
       {renderContent()}
-      <Toaster />
     </Layout>
   );
 }
