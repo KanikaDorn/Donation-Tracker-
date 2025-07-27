@@ -8,6 +8,7 @@ import { Button } from './components/ui/button';
 import { Input } from './components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './components/ui/select';
 import { Badge } from './components/ui/badge';
+import { Toaster } from './components/ui/sonner';
 import { toast } from 'sonner';
 import { Search, Filter, TrendingUp, Award, Clock } from 'lucide-react';
 import { Campaign, DonationForm, CreateCampaignForm as CreateCampaignFormType } from './types';
@@ -19,9 +20,9 @@ export default function App() {
   const [currentView, setCurrentView] = useState<View>('home');
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
   const [campaigns, setCampaigns] = useState<Campaign[]>(mockCampaigns);
-  const [searchTerm, setSearchTerm] = useState<string>('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('All Categories');
-  const [sortBy, setSortBy] = useState<string>('featured');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('All Categories');
+  const [sortBy, setSortBy] = useState('featured');
 
   const featuredCampaigns = campaigns.filter(c => c.featured);
   
@@ -300,6 +301,7 @@ export default function App() {
   return (
     <Layout>
       {renderContent()}
+      <Toaster />
     </Layout>
   );
 }

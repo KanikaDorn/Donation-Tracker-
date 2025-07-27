@@ -7,7 +7,7 @@ import { Badge } from "./ui/badge";
 import { Calendar, Users, DollarSign } from "lucide-react";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 
-interface CampaignCardProps {
+interface CampaignCardProps extends React.ComponentPropsWithoutRef<"div"> {
   campaign: Campaign;
   onViewDetails: (campaign: Campaign) => void;
   onDonate: (campaignId: string) => void;
