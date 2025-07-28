@@ -1,15 +1,32 @@
-import { useState } from 'react';
-import { Button } from './ui/button';
-import { Heart, Menu, X } from 'lucide-react';
-import React from "react";
-
+import { useState } from "react";
+import { Button } from "./ui/button";
+import { Heart, Menu, X, Home, Info, Phone, Plus } from "lucide-react";
 
 interface LayoutProps {
   children: React.ReactNode;
+  currentView: string;
+  onNavigate: (view: string) => void;
 }
 
-export function Layout({ children }: LayoutProps) {
+export function Layout({ children, currentView, onNavigate }: LayoutProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  const navItems = [
+    { id: "home", label: "Home", icon: Home },
+    { id: "about", label: "About", icon: Info },
+    { id: "contact", label: "Contact", icon: Phone },
+  ];
+
+  const handleNavClick = (viewId: string) => {
+    if (viewId === "contact") {
+      // For now, just scroll to footer contact info
+      const footer = document.querySelector("footer");
+      footer?.scrollIntoView({ behavior: "smooth" });
+    } else {
+      onNavigate(viewId);
+    }
+    setIsMobileMenuOpen(false);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-orange-50">
@@ -18,22 +35,39 @@ export function Layout({ children }: LayoutProps) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             {/* Logo */}
-            <div className="flex items-center space-x-2">
+            <button
+              onClick={() => handleNavClick("home")}
+              className="flex items-center space-x-2 hover:opacity-80 transition-opacity"
+            >
               <div className="bg-gradient-to-r from-blue-500 to-green-500 p-2 rounded-lg">
                 <Heart className="h-6 w-6 text-white" />
               </div>
               <span className="text-xl font-semibold bg-gradient-to-r from-blue-600 to-green-600 bg-clip-text text-transparent">
                 DonateTracker
               </span>
-            </div>
+            </button>
 
             {/* Desktop Navigation */}
             <div className="hidden md:flex items-center space-x-8">
-              <a href="#home" className="text-gray-600 hover:text-blue-600 transition-colors">Home</a>
-              <a href="#campaigns" className="text-gray-600 hover:text-blue-600 transition-colors">Campaigns</a>
-              <a href="#about" className="text-gray-600 hover:text-blue-600 transition-colors">About</a>
-              <a href="#contact" className="text-gray-600 hover:text-blue-600 transition-colors">Contact</a>
-              <Button className="bg-gradient-to-r from-blue-500 to-green-500 hover:from-blue-600 hover:to-green-600">
+              {navItems.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => handleNavClick(item.id)}
+                  className={`flex items-center space-x-1 px-3 py-2 rounded-lg transition-all duration-200 ${
+                    currentView === item.id
+                      ? "bg-blue-100 text-blue-600 font-medium"
+                      : "text-gray-600 hover:text-blue-600 hover:bg-blue-50"
+                  }`}
+                >
+                  <item.icon className="h-4 w-4" />
+                  <span>{item.label}</span>
+                </button>
+              ))}
+              <Button
+                className="bg-gradient-to-r from-blue-500 to-green-500 hover:from-blue-600 hover:to-green-600"
+                onClick={() => onNavigate("create-campaign")}
+              >
+                <Plus className="h-4 w-4 mr-2" />
                 Start Campaign
               </Button>
             </div>
@@ -45,7 +79,11 @@ export function Layout({ children }: LayoutProps) {
                 size="sm"
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               >
-                {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+                {isMobileMenuOpen ? (
+                  <X className="h-6 w-6" />
+                ) : (
+                  <Menu className="h-6 w-6" />
+                )}
               </Button>
             </div>
           </div>
@@ -54,11 +92,28 @@ export function Layout({ children }: LayoutProps) {
           {isMobileMenuOpen && (
             <div className="md:hidden">
               <div className="px-2 pt-2 pb-3 space-y-1 bg-white/90 backdrop-blur-sm rounded-lg mb-2">
-                <a href="#home" className="block px-3 py-2 text-gray-600 hover:text-blue-600">Home</a>
-                <a href="#campaigns" className="block px-3 py-2 text-gray-600 hover:text-blue-600">Campaigns</a>
-                <a href="#about" className="block px-3 py-2 text-gray-600 hover:text-blue-600">About</a>
-                <a href="#contact" className="block px-3 py-2 text-gray-600 hover:text-blue-600">Contact</a>
-                <Button className="w-full mt-2 bg-gradient-to-r from-blue-500 to-green-500">
+                {navItems.map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => handleNavClick(item.id)}
+                    className={`flex items-center space-x-2 w-full px-3 py-2 rounded-lg transition-all duration-200 ${
+                      currentView === item.id
+                        ? "bg-blue-100 text-blue-600 font-medium"
+                        : "text-gray-600 hover:text-blue-600 hover:bg-blue-50"
+                    }`}
+                  >
+                    <item.icon className="h-4 w-4" />
+                    <span>{item.label}</span>
+                  </button>
+                ))}
+                <Button
+                  className="w-full mt-2 bg-gradient-to-r from-blue-500 to-green-500"
+                  onClick={() => {
+                    onNavigate("create-campaign");
+                    setIsMobileMenuOpen(false);
+                  }}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
                   Start Campaign
                 </Button>
               </div>
@@ -75,38 +130,69 @@ export function Layout({ children }: LayoutProps) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid md:grid-cols-4 gap-8">
             <div>
-              <div className="flex items-center space-x-2 mb-4">
+              <button
+                onClick={() => onNavigate("home")}
+                className="flex items-center space-x-2 mb-4 hover:opacity-80 transition-opacity"
+              >
                 <div className="bg-gradient-to-r from-blue-500 to-green-500 p-2 rounded-lg">
                   <Heart className="h-6 w-6 text-white" />
                 </div>
                 <span className="text-xl font-semibold">DonateTracker</span>
-              </div>
+              </button>
               <p className="text-gray-400">
-                Empowering communities through transparent and impactful donations.
+                Empowering communities through transparent and impactful
+                donations.
               </p>
             </div>
             <div>
-              <h3 className="mb-4">Quick Links</h3>
+              <h3 className="mb-4 font-semibold">Quick Links</h3>
               <div className="space-y-2">
-                <a href="#" className="block text-gray-400 hover:text-white transition-colors">How it Works</a>
-                <a href="#" className="block text-gray-400 hover:text-white transition-colors">Success Stories</a>
-                <a href="#" className="block text-gray-400 hover:text-white transition-colors">FAQ</a>
+                <button
+                  onClick={() => onNavigate("about")}
+                  className="block text-gray-400 hover:text-white transition-colors"
+                >
+                  About Us
+                </button>
+                <button
+                  onClick={() => onNavigate("home")}
+                  className="block text-gray-400 hover:text-white transition-colors"
+                >
+                  How it Works
+                </button>
+                <button
+                  onClick={() => onNavigate("home")}
+                  className="block text-gray-400 hover:text-white transition-colors"
+                >
+                  Success Stories
+                </button>
               </div>
             </div>
             <div>
-              <h3 className="mb-4">Support</h3>
+              <h3 className="mb-4 font-semibold">Support</h3>
               <div className="space-y-2">
-                <a href="#" className="block text-gray-400 hover:text-white transition-colors">Help Center</a>
-                <a href="#" className="block text-gray-400 hover:text-white transition-colors">Contact Us</a>
-                <a href="#" className="block text-gray-400 hover:text-white transition-colors">Terms of Service</a>
+                <a
+                  href="mailto:contact@donatetracker.com"
+                  className="block text-gray-400 hover:text-white transition-colors"
+                >
+                  Help Center
+                </a>
+                <a
+                  href="mailto:contact@donatetracker.com"
+                  className="block text-gray-400 hover:text-white transition-colors"
+                >
+                  Contact Us
+                </a>
+                <button className="block text-gray-400 hover:text-white transition-colors">
+                  Terms of Service
+                </button>
               </div>
             </div>
             <div>
-              <h3 className="mb-4">Categories</h3>
-              <div className="space-y-2">
-                <a href="#" className="block text-gray-400 hover:text-white transition-colors">Education</a>
-                <a href="#" className="block text-gray-400 hover:text-white transition-colors">Healthcare</a>
-                <a href="#" className="block text-gray-400 hover:text-white transition-colors">Environment</a>
+              <h3 className="mb-4 font-semibold">Contact Info</h3>
+              <div className="space-y-2 text-gray-400">
+                <div>📧 contact@donatetracker.com</div>
+                <div>📞 0177 777 888</div>
+                <div>📍Phom Penh, Cambodia</div>
               </div>
             </div>
           </div>

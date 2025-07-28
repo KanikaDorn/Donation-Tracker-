@@ -1,28 +1,65 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Layout } from './components/Layout';
 import { HeroSection } from './components/HeroSection';
 import { CampaignCard } from './components/CampaignCard';
 import { CampaignDetails } from './components/CampaignDetails';
 import { CreateCampaignForm } from './components/CreateCampaignForm';
+import { AboutUs } from './components/AboutUs';
 import { Button } from './components/ui/button';
 import { Input } from './components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './components/ui/select';
 import { Badge } from './components/ui/badge';
 import { Toaster } from './components/ui/sonner';
 import { toast } from 'sonner';
-import { Search, Filter, TrendingUp, Award, Clock } from 'lucide-react';
+import { Search, Filter, TrendingUp, Award, Clock, Loader2 } from 'lucide-react';
 import { Campaign, DonationForm, CreateCampaignForm as CreateCampaignFormType } from './types';
 import { mockCampaigns, categories } from './data/mockData';
-
-type View = 'home' | 'campaign-details' | 'create-campaign';
+import { donationAPI } from './utils/supabase/client';
 
 export default function App() {
-  const [currentView, setCurrentView] = useState<View>('home');
+  const [currentView, setCurrentView] = useState('home');
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
-  const [campaigns, setCampaigns] = useState<Campaign[]>(mockCampaigns);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All Categories');
   const [sortBy, setSortBy] = useState('featured');
+
+  // Load campaigns from Supabase on mount
+  useEffect(() => {
+    loadCampaigns();
+  }, []);
+
+  const loadCampaigns = async () => {
+    try {
+      setLoading(true);
+      const response = await donationAPI.getCampaigns();
+      
+      // If no campaigns in database, use mock data
+      if (!response.campaigns || response.campaigns.length === 0) {
+        console.log('No campaigns found in database, using mock data');
+        setCampaigns(mockCampaigns);
+      } else {
+        // Parse dates from string format
+        const parsedCampaigns = response.campaigns.map((campaign: any) => ({
+          ...campaign,
+          createdAt: new Date(campaign.createdAt),
+          deadline: new Date(campaign.deadline),
+          donors: campaign.donors?.map((donor: any) => ({
+            ...donor,
+            donatedAt: new Date(donor.donatedAt)
+          })) || []
+        }));
+        setCampaigns(parsedCampaigns);
+      }
+    } catch (error) {
+      console.error('Error loading campaigns:', error);
+      toast.error('Failed to load campaigns. Using offline data.');
+      setCampaigns(mockCampaigns);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const featuredCampaigns = campaigns.filter(c => c.featured);
   
@@ -52,40 +89,44 @@ export default function App() {
     setCurrentView('campaign-details');
   };
 
-  const handleDonate = (campaignId: string, donation?: DonationForm) => {
+  const handleDonate = async (campaignId: string, donation?: DonationForm) => {
     if (donation) {
-      // Process donation
-      const newDonor = {
-        id: `donor-${Date.now()}`,
-        name: donation.anonymous ? 'Anonymous' : donation.name,
-        amount: donation.amount,
-        message: donation.message,
-        donatedAt: new Date(),
-        anonymous: donation.anonymous
-      };
+      try {
+        const response = await donationAPI.addDonation(campaignId, donation);
+        
+        // Update local state
+        setCampaigns(prev => prev.map(campaign => 
+          campaign.id === campaignId 
+            ? {
+                ...campaign,
+                currentAmount: response.campaign.currentAmount,
+                donors: response.campaign.donors.map((donor: any) => ({
+                  ...donor,
+                  donatedAt: new Date(donor.donatedAt)
+                }))
+              }
+            : campaign
+        ));
 
-      setCampaigns(prev => prev.map(campaign => 
-        campaign.id === campaignId 
-          ? {
-              ...campaign,
-              currentAmount: campaign.currentAmount + donation.amount,
-              donors: [...campaign.donors, newDonor]
-            }
-          : campaign
-      ));
+        // Update selected campaign if it's the same one
+        if (selectedCampaign?.id === campaignId) {
+          setSelectedCampaign(prev => prev ? {
+            ...prev,
+            currentAmount: response.campaign.currentAmount,
+            donors: response.campaign.donors.map((donor: any) => ({
+              ...donor,
+              donatedAt: new Date(donor.donatedAt)
+            }))
+          } : prev);
+        }
 
-      // Update selected campaign if it's the same one
-      if (selectedCampaign?.id === campaignId) {
-        setSelectedCampaign(prev => prev ? {
-          ...prev,
-          currentAmount: prev.currentAmount + donation.amount,
-          donors: [...prev.donors, newDonor]
-        } : prev);
+        toast.success(`Thank you for your donation of $${donation.amount}!`, {
+          description: 'Your contribution will make a real difference.'
+        });
+      } catch (error) {
+        console.error('Error processing donation:', error);
+        toast.error('Failed to process donation. Please try again.');
       }
-
-      toast.success(`Thank you for your donation of $${donation.amount}!`, {
-        description: 'Your contribution will make a real difference.'
-      });
     } else {
       // Just show donation form (handled by CampaignDetails component)
       const campaign = campaigns.find(c => c.id === campaignId);
@@ -95,31 +136,79 @@ export default function App() {
     }
   };
 
-  const handleCreateCampaign = (campaignData: CreateCampaignFormType) => {
-    const newCampaign: Campaign = {
-      id: `campaign-${Date.now()}`,
-      title: campaignData.title,
-      description: campaignData.description,
-      shortDescription: campaignData.shortDescription,
-      imageUrl: 'https://images.unsplash.com/photo-1559027615-cd4628902d4a?w=800&h=400&fit=crop',
-      goal: campaignData.goal,
-      currentAmount: 0,
-      category: campaignData.category,
-      deadline: campaignData.deadline,
-      createdAt: new Date(),
-      createdBy: 'You',
-      donors: []
-    };
+  const handleCreateCampaign = async (campaignData: CreateCampaignFormType) => {
+    try {
+      let imageUrl = 'https://images.unsplash.com/photo-1559027615-cd4628902d4a?w=800&h=400&fit=crop';
+      
+      // Upload image if provided
+      if (campaignData.image) {
+        try {
+          const uploadResponse = await donationAPI.uploadImage(campaignData.image);
+          imageUrl = uploadResponse.imageUrl;
+        } catch (error) {
+          console.error('Error uploading image:', error);
+          toast.error('Failed to upload image, using default image.');
+        }
+      }
 
-    setCampaigns(prev => [newCampaign, ...prev]);
-    setCurrentView('home');
-    toast.success('Campaign created successfully!', {
-      description: 'Your campaign is now live and ready to receive donations.'
-    });
+      const newCampaignData = {
+        title: campaignData.title,
+        description: campaignData.description,
+        shortDescription: campaignData.shortDescription,
+        goal: campaignData.goal,
+        category: campaignData.category,
+        deadline: campaignData.deadline.toISOString(),
+        imageUrl,
+        createdBy: 'You'
+      };
+
+      const response = await donationAPI.createCampaign(newCampaignData);
+      
+      // Parse the response campaign
+      const newCampaign = {
+        ...response.campaign,
+        createdAt: new Date(response.campaign.createdAt),
+        deadline: new Date(response.campaign.deadline),
+        donors: []
+      };
+
+      setCampaigns(prev => [newCampaign, ...prev]);
+      setCurrentView('home');
+      toast.success('Campaign created successfully!', {
+        description: 'Your campaign is now live and ready to receive donations.'
+      });
+    } catch (error) {
+      console.error('Error creating campaign:', error);
+      toast.error('Failed to create campaign. Please try again.');
+    }
   };
 
   const renderContent = () => {
+    if (loading && currentView === 'home') {
+      return (
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
+            <p className="text-gray-600">Loading campaigns...</p>
+          </div>
+        </div>
+      );
+    }
+
     switch (currentView) {
+      case 'about':
+        return (
+          <AboutUs
+            onStartCampaign={() => setCurrentView('create-campaign')}
+            onContact={() => {
+              toast.info('Contact form coming soon!', {
+                description: 'For now, reach out to us at contact@donatetracker.com'
+              });
+            }}
+            onExploreCampaigns={() => setCurrentView('home')}
+          />
+        );
+
       case 'campaign-details':
         return selectedCampaign ? (
           <CampaignDetails
@@ -299,7 +388,7 @@ export default function App() {
   };
 
   return (
-    <Layout>
+    <Layout currentView={currentView} onNavigate={setCurrentView}>
       {renderContent()}
       <Toaster />
     </Layout>
